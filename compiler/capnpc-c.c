@@ -44,6 +44,9 @@ static int g_val0used, g_nullused;
 
 static int g_fieldgetset = 0;
 
+// static const char* g_prefix = "";
+static const char* g_prefix = "cereal_"; //TODO: set by annotation
+
 static struct capn_tree *g_node_tree;
 
 static struct node *find_node_mayfail(uint64_t id) {
@@ -112,14 +115,14 @@ static void resolve_names(struct str *b, struct node *n, capn_text name, struct 
 static void define_enum(struct node *n) {
 	int i;
 
-	str_addf(&HDR, "\nenum %s {", n->name.str);
+	str_addf(&HDR, "\nenum %s%s {", g_prefix, n->name.str);
 	for (i = 0; i < capn_len(n->n._enum.enumerants); i++) {
 		struct Enumerant e;
 		get_Enumerant(&e, n->n._enum.enumerants, i);
 		if (i) {
 			str_addf(&HDR, ",");
 		}
-		str_addf(&HDR, "\n\t%s_%s = %d", n->name.str, e.name.str, i);
+		str_addf(&HDR, "\n\t%s%s_%s = %d", g_prefix, n->name.str, e.name.str, i);
 	}
 	str_addf(&HDR, "\n};\n");
 }
@@ -174,11 +177,11 @@ static void decode_value(struct value* v, Type_ptr type, Value_ptr value, const 
 		v->tname = "capn_data";
 		break;
 	case Type__enum:
-		v->tname = strf(&v->tname_buf, "enum %s", find_node(v->t._enum.typeId)->name.str);
+		v->tname = strf(&v->tname_buf, "enum %s%s", g_prefix, find_node(v->t._enum.typeId)->name.str);
 		break;
 	case Type__struct:
 	case Type__interface:
-		v->tname = strf(&v->tname_buf, "%s_ptr", find_node(v->t._struct.typeId)->name.str);
+		v->tname = strf(&v->tname_buf, "%s%s_ptr", g_prefix, find_node(v->t._struct.typeId)->name.str);
 		break;
 	case Type_anyPointer:
 		v->tname = "capn_ptr";
@@ -220,7 +223,7 @@ static void decode_value(struct value* v, Type_ptr type, Value_ptr value, const 
 			break;
 		case Type__struct:
 		case Type__interface:
-			v->tname = strf(&v->tname_buf, "%s_list", find_node(list_type._struct.typeId)->name.str);
+			v->tname = strf(&v->tname_buf, "%s%s_list", g_prefix, find_node(list_type._struct.typeId)->name.str);
 			break;
 		}
 	}
@@ -333,34 +336,34 @@ static void define_const(struct node *n) {
 	case Value_int8:
 	case Value_int16:
 	case Value_int32:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = %d;\n", v.tname, n->name.str, (int) v.intval);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = %d;\n", v.tname, g_prefix, n->name.str, (int) v.intval);
 		break;
 
 	case Value_uint8:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = %u;\n", v.tname, n->name.str, (uint8_t) v.intval);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = %u;\n", v.tname, g_prefix, n->name.str, (uint8_t) v.intval);
 		break;
 
 	case Value_uint16:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = %u;\n", v.tname, n->name.str, (uint16_t) v.intval);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = %u;\n", v.tname, g_prefix, n->name.str, (uint16_t) v.intval);
 		break;
 
 	case Value_uint32:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = %uu;\n", v.tname, n->name.str, (uint32_t) v.intval);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = %uu;\n", v.tname, g_prefix, n->name.str, (uint32_t) v.intval);
 		break;
 
 	case Value__enum:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = (%s) %uu;\n", v.tname, n->name.str, v.tname, (uint32_t) v.intval);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = (%s) %uu;\n", v.tname, g_prefix, n->name.str, v.tname, (uint32_t) v.intval);
 		break;
 
 	case Value_int64:
 	case Value_uint64:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
-		str_addf(&SRC, "%s %s = ((uint64_t) %#xu << 32) | %#xu;\n", v.tname, n->name.str,
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
+		str_addf(&SRC, "%s %s%s = ((uint64_t) %#xu << 32) | %#xu;\n", v.tname, g_prefix, n->name.str,
 				(uint32_t) (v.intval >> 32), (uint32_t) v.intval);
 		break;
 
@@ -380,9 +383,9 @@ static void define_const(struct node *n) {
 	case Value__struct:
 	case Value_anyPointer:
 	case Value__list:
-		str_addf(&HDR, "extern %s %s;\n", v.tname, n->name.str);
+		str_addf(&HDR, "extern %s %s%s;\n", v.tname, g_prefix, n->name.str);
 		if (!v.ptrval.type) {
-			str_addf(&SRC, "%s %s;\n", v.tname, n->name.str);
+			str_addf(&SRC, "%s %s%s;\n", v.tname, g_prefix, n->name.str);
 		}
 		break;
 
@@ -694,8 +697,8 @@ static void union_cases(struct strings *s, struct node *n, struct field *first_f
 			continue;
 
 		u = f;
-		str_addf(&s->set, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
-		str_addf(&s->get, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
+		str_addf(&s->set, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
+		str_addf(&s->get, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
 	}
 
 	if (u)
@@ -727,16 +730,16 @@ static void do_union(struct strings *s, struct node *n, struct field *first_fiel
 
 	if (union_name) {
 		str_addf(&tag, "%.*s_which", s->var.len - 1, s->var.str);
-		str_addf(&enums, "enum %s_which {", n->name.str);
-		str_addf(&s->decl, "%senum %s_which %s_which;\n", s->dtab.str, n->name.str, union_name);
-		str_addf(&s->get, "%s%s = (enum %s_which)(int) capn_read16(p.p, %d);\n",
-				s->ftab.str, tag.str, n->name.str, tagoff);
+		str_addf(&enums, "enum %s%s_which {", g_prefix, n->name.str);
+		str_addf(&s->decl, "%senum %s%s_which %s_which;\n", s->dtab.str, g_prefix, n->name.str, union_name);
+		str_addf(&s->get, "%s%s = (enum %s%s_which)(int) capn_read16(p.p, %d);\n",
+				s->ftab.str, tag.str, g_prefix, n->name.str, tagoff);
 	} else {
 		str_addf(&tag, "%swhich", s->var.str);
-		str_addf(&enums, "enum %s_which {", n->name.str);
-		str_addf(&s->decl, "%senum %s_which which;\n", s->dtab.str, n->name.str);
-		str_addf(&s->get, "%s%s = (enum %s_which)(int) capn_read16(p.p, %d);\n",
-				s->ftab.str, tag.str, n->name.str, tagoff);
+		str_addf(&enums, "enum %s%s_which {", g_prefix, n->name.str);
+		str_addf(&s->decl, "%senum %s%s_which which;\n", s->dtab.str, g_prefix, n->name.str);
+		str_addf(&s->get, "%s%s = (enum %s%s_which)(int) capn_read16(p.p, %d);\n",
+				s->ftab.str, tag.str, g_prefix, n->name.str, tagoff);
 	}
 
 	str_addf(&s->set, "%scapn_write16(p.p, %d, %s);\n", s->ftab.str, tagoff, tag.str);
@@ -764,12 +767,12 @@ static void do_union(struct strings *s, struct node *n, struct field *first_fiel
 			str_addf(&enums, ",");
 		}
 
-		str_addf(&enums, "\n\t%s_%s = %d", n->name.str, field_name(f), f->f.discriminantValue);
+		str_addf(&enums, "\n\t%s%s_%s = %d", g_prefix, n->name.str, field_name(f), f->f.discriminantValue);
 
 		switch (f->f.which) {
 		case Field_group:
-			str_addf(&s->get, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
-			str_addf(&s->set, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
+			str_addf(&s->get, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
+			str_addf(&s->set, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
 			str_add(&s->ftab, "\t", -1);
 			define_group(s, f->group, field_name(f));
 			str_addf(&s->get, "%sbreak;\n", s->ftab.str);
@@ -780,8 +783,8 @@ static void do_union(struct strings *s, struct node *n, struct field *first_fiel
 		case Field_slot:
 			declare_slot(s, f);
 			if (f->v.ptrval.type || f->v.intval) {
-				str_addf(&s->get, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
-				str_addf(&s->set, "%scase %s_%s:\n", s->ftab.str, n->name.str, field_name(f));
+				str_addf(&s->get, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
+				str_addf(&s->set, "%scase %s%s_%s:\n", s->ftab.str, g_prefix, n->name.str, field_name(f));
 				union_block(s, f);
 			}
 			break;
@@ -957,47 +960,47 @@ static void define_struct(struct node *n) {
 
 	str_add(&HDR, s.enums.str, s.enums.len);
 
-	str_addf(&HDR, "\nstruct %s {\n", n->name.str);
+	str_addf(&HDR, "\nstruct %s%s {\n", g_prefix, n->name.str);
 	str_add(&HDR, s.decl.str, s.decl.len);
 	str_addf(&HDR, "};\n");
 
-	str_addf(&SRC, "\n%s_ptr new_%s(struct capn_segment *s) {\n", n->name.str, n->name.str);
-	str_addf(&SRC, "\t%s_ptr p;\n", n->name.str);
+	str_addf(&SRC, "\n%s%s_ptr %snew_%s(struct capn_segment *s) {\n", g_prefix, n->name.str, g_prefix, n->name.str);
+	str_addf(&SRC, "\t%s%s_ptr p;\n", g_prefix, n->name.str);
 	str_addf(&SRC, "\tp.p = capn_new_struct(s, %d, %d);\n", 8*n->n._struct.dataWordCount, n->n._struct.pointerCount);
 	str_addf(&SRC, "\treturn p;\n");
 	str_addf(&SRC, "}\n");
 
 	// adding the ability to get the structure size
-	str_addf(&HDR, "\nstatic const size_t %s_word_count = %d;\n", n->name.str, n->n._struct.dataWordCount);
-	str_addf(&HDR, "\nstatic const size_t %s_pointer_count = %d;\n", n->name.str, n->n._struct.pointerCount);
-	str_addf(&HDR, "\nstatic const size_t %s_struct_bytes_count = %d;\n", n->name.str, 8 * (n->n._struct.pointerCount + n->n._struct.dataWordCount));
+	str_addf(&HDR, "\nstatic const size_t %s%s_word_count = %d;\n", g_prefix, n->name.str, n->n._struct.dataWordCount);
+	str_addf(&HDR, "\nstatic const size_t %s%s_pointer_count = %d;\n", g_prefix, n->name.str, n->n._struct.pointerCount);
+	str_addf(&HDR, "\nstatic const size_t %s%s_struct_bytes_count = %d;\n", g_prefix, n->name.str, 8 * (n->n._struct.pointerCount + n->n._struct.dataWordCount));
 
-	str_addf(&SRC, "%s_list new_%s_list(struct capn_segment *s, int len) {\n", n->name.str, n->name.str);
-	str_addf(&SRC, "\t%s_list p;\n", n->name.str);
+	str_addf(&SRC, "%s%s_list %snew_%s_list(struct capn_segment *s, int len) {\n", g_prefix, n->name.str, g_prefix, n->name.str);
+	str_addf(&SRC, "\t%s%s_list p;\n", g_prefix, n->name.str);
 	str_addf(&SRC, "\tp.p = capn_new_list(s, len, %d, %d);\n", 8*n->n._struct.dataWordCount, n->n._struct.pointerCount);
 	str_addf(&SRC, "\treturn p;\n");
 	str_addf(&SRC, "}\n");
 
-	str_addf(&SRC, "void read_%s(struct %s *s, %s_ptr p) {\n", n->name.str, n->name.str, n->name.str);
+	str_addf(&SRC, "void %sread_%s(struct %s%s *s, %s%s_ptr p) {\n", g_prefix, n->name.str, g_prefix, n->name.str, g_prefix, n->name.str);
 	str_addf(&SRC, "\tcapn_resolve(&p.p);\n");
 	str_add(&SRC, s.get.str, s.get.len);
 	str_addf(&SRC, "}\n");
 
-	str_addf(&SRC, "void write_%s(const struct %s *s, %s_ptr p) {\n", n->name.str, n->name.str, n->name.str);
+	str_addf(&SRC, "void %swrite_%s(const struct %s%s *s, %s%s_ptr p) {\n", g_prefix, n->name.str, g_prefix, n->name.str, g_prefix, n->name.str);
 	str_addf(&SRC, "\tcapn_resolve(&p.p);\n");
 	str_add(&SRC, s.set.str, s.set.len);
 	str_addf(&SRC, "}\n");
 
-	str_addf(&SRC, "void get_%s(struct %s *s, %s_list l, int i) {\n", n->name.str, n->name.str, n->name.str);
-	str_addf(&SRC, "\t%s_ptr p;\n", n->name.str);
+	str_addf(&SRC, "void %sget_%s(struct %s%s *s, %s%s_list l, int i) {\n", g_prefix, n->name.str, g_prefix, n->name.str, g_prefix, n->name.str);
+	str_addf(&SRC, "\t%s%s_ptr p;\n", g_prefix, n->name.str);
 	str_addf(&SRC, "\tp.p = capn_getp(l.p, i, 0);\n");
-	str_addf(&SRC, "\tread_%s(s, p);\n", n->name.str);
+	str_addf(&SRC, "\t%sread_%s(s, p);\n", g_prefix, n->name.str);
 	str_addf(&SRC, "}\n");
 
-	str_addf(&SRC, "void set_%s(const struct %s *s, %s_list l, int i) {\n", n->name.str, n->name.str, n->name.str);
-	str_addf(&SRC, "\t%s_ptr p;\n", n->name.str);
+	str_addf(&SRC, "void %sset_%s(const struct %s%s *s, %s%s_list l, int i) {\n", g_prefix, n->name.str, g_prefix, n->name.str, g_prefix, n->name.str);
+	str_addf(&SRC, "\t%s%s_ptr p;\n", g_prefix, n->name.str);
 	str_addf(&SRC, "\tp.p = capn_getp(l.p, i, 0);\n");
-	str_addf(&SRC, "\twrite_%s(s, p);\n", n->name.str);
+	str_addf(&SRC, "\t%swrite_%s(s, p);\n", g_prefix, n->name.str);
 	str_addf(&SRC, "}\n");
 
 	str_add(&SRC, s.pub_get.str, s.pub_get.len);
@@ -1150,17 +1153,19 @@ static void define_method(struct node *iface, int ord) {
 static void declare(struct node *file_node, const char *format, int num) {
 	struct node *n;
 	str_addf(&HDR, "\n");
+
+
 	for (n = file_node->file_nodes; n != NULL; n = n->next_file_node) {
 		if (n->n.which == Node__struct && !n->n._struct.isGroup) {
 			switch (num) {
 			case 3:
-				str_addf(&HDR, format, n->name.str, n->name.str, n->name.str);
+				str_addf(&HDR, format, g_prefix, n->name.str, g_prefix, n->name.str, g_prefix, n->name.str);
 				break;
 			case 2:
-				str_addf(&HDR, format, n->name.str, n->name.str);
+				str_addf(&HDR, format, g_prefix, n->name.str, g_prefix, n->name.str);
 				break;
 			case 1:
-				str_addf(&HDR, format, n->name.str);
+				str_addf(&HDR, format, g_prefix, n->name.str);
 				break;
 			}
 		}
@@ -1295,9 +1300,9 @@ int main() {
 
 		str_addf(&HDR, "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n");
 
-		declare(file_node, "struct %s;\n", 1);
-		declare(file_node, "typedef struct {capn_ptr p;} %s_ptr;\n", 1);
-		declare(file_node, "typedef struct {capn_ptr p;} %s_list;\n", 1);
+		declare(file_node, "struct %s%s;\n", 1);
+		declare(file_node, "typedef struct {capn_ptr p;} %s%s_ptr;\n", 1);
+		declare(file_node, "typedef struct {capn_ptr p;} %s%s_list;\n", 1);
 
 		for (n = file_node->file_nodes; n != NULL; n = n->next_file_node) {
 			if (n->n.which == Node__enum) {
@@ -1317,12 +1322,12 @@ int main() {
 			}
 		}
 
-		declare(file_node, "%s_ptr new_%s(struct capn_segment*);\n", 2);
-		declare(file_node, "%s_list new_%s_list(struct capn_segment*, int len);\n", 2);
-		declare(file_node, "void read_%s(struct %s*, %s_ptr);\n", 3);
-		declare(file_node, "void write_%s(const struct %s*, %s_ptr);\n", 3);
-		declare(file_node, "void get_%s(struct %s*, %s_list, int i);\n", 3);
-		declare(file_node, "void set_%s(const struct %s*, %s_list, int i);\n", 3);
+		declare(file_node, "%s%s_ptr %snew_%s(struct capn_segment*);\n", 2);
+		declare(file_node, "%s%s_list %snew_%s_list(struct capn_segment*, int len);\n", 2);
+		declare(file_node, "void %sread_%s(struct %s%s*, %s%s_ptr);\n", 3);
+		declare(file_node, "void %swrite_%s(const struct %s%s*, %s%s_ptr);\n", 3);
+		declare(file_node, "void %sget_%s(struct %s%s*, %s%s_list, int i);\n", 3);
+		declare(file_node, "void %sset_%s(const struct %s%s*, %s%s_list, int i);\n", 3);
 
 		str_addf(&HDR, "\n#ifdef __cplusplus\n}\n#endif\n#endif\n");
 
